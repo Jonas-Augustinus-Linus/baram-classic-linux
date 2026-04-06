@@ -91,9 +91,11 @@ launch.sh 실행
 |------|------|
 | `DXVK_ASYNC=1` | 셰이더 비동기 컴파일 (스터터링 감소) |
 | `dxvk.maxFrameLatency=1` | 입력 지연 최소화 |
+| `d3d11.cachedDynamicResources` | iGPU 동적 리소스 캐싱 |
 | `mesa_glthread=true` | Mesa GL 멀티스레딩 |
 | `MESA_NO_ERROR=1` | GL 에러 체크 비활성화 |
 | `RADV_DEBUG=nozerovram` | AMD VRAM 제로클리어 비활성화 |
+| `RADV_PERFTEST=gpl` | RADV 그래픽 파이프라인 라이브러리 |
 
 ### 시스템
 | 설정 | 효과 |
@@ -102,7 +104,9 @@ launch.sh 실행
 | `ntsync` 모듈 | NT 동기화 커널 지원 (커널 6.14+) |
 | `vm.max_map_count` | 메모리 맵 한도 증가 |
 | `vm.swappiness=10` | 스왑 최소화 |
-| GameMode | CPU/GPU 성능 모드 자동 전환 |
+| GameMode (`gamemoderun`) | CPU/GPU 성능 모드 자동 전환 |
+| Tracker 인덱서 중지 | 게임 중 I/O 경쟁 방지 |
+| VRR (가변 주사율) | GNOME Mutter VRR 활성화 |
 
 ## 알려진 이슈
 

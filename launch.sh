@@ -4,6 +4,9 @@
 
 set -e
 
+# 종료 시 Tracker 재시작
+trap 'systemctl --user start tracker-miner-fs-3.service 2>/dev/null' EXIT
+
 # ==========================================
 # 사용자 설정 (환경변수로도 전달 가능)
 # ==========================================
@@ -65,9 +68,18 @@ export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
 export WINEDEBUG=-all
 export DISPLAY="${DISPLAY:-:0}"
 
+# ==========================================
+# RADV 파이프라인 캐시 + 기타
+# ==========================================
+export RADV_PERFTEST=gpl
+export WINE_LARGE_ADDRESS_AWARE=1
+
 echo "=========================================="
 echo "  바람의나라 클래식 런처"
 echo "=========================================="
+
+# Step 0: 백그라운드 인덱서 일시정지
+systemctl --user stop tracker-miner-fs-3.service 2>/dev/null && echo "[0] Tracker 인덱서 중지"
 
 # Step 1: Chrome 종료
 echo "[1/5] Chrome 종료 중..."
@@ -246,17 +258,10 @@ async def run():
         if ngm_url and ngm_url.startswith('ngm://'):
             print("  NGM URL 캡처 성공!")
             env = os.environ.copy()
-            env.update({
-                "WINEPREFIX": WINEPREFIX, "WINEDEBUG": "-all",
-                "XMODIFIERS": "@im=ibus", "GTK_IM_MODULE": "ibus", "QT_IM_MODULE": "ibus",
-                "WINEFSYNC": "1", "WINEESYNC": "1", "STAGING_SHARED_MEMORY": "1",
-                "DXVK_ASYNC": "1", "DXVK_STATE_CACHE_PATH": WINEPREFIX,
-                "DXVK_CONFIG_FILE": f"{WINEPREFIX}/drive_c/dxvk.conf",
-                "mesa_glthread": "true", "MESA_NO_ERROR": "1",
-                "RADV_DEBUG": "nozerovram", "AMD_VULKAN_ICD": "RADV",
-            })
-            subprocess.Popen([WINE, NGM_EXE, ngm_url], env=env)
-            print("[5/5] 게임 실행!")
+            use_gamemode = os.path.exists("/usr/bin/gamemoderun") or os.path.exists("/usr/games/gamemoderun")
+            cmd = (["gamemoderun"] if use_gamemode else []) + [WINE, NGM_EXE, ngm_url]
+            subprocess.Popen(cmd, env=env)
+            print(f"[5/5] 게임 실행! (GameMode: {'ON' if use_gamemode else 'OFF'})")
         else:
             print("[!] NGM URL 캡처 실패")
             sys.exit(1)
