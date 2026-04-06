@@ -51,6 +51,21 @@ echo "[3/7] Wine 레지스트리 최적화..."
 "$WINE" reg add 'HKCU\Software\Wine\X11 Driver' /v Managed /t REG_SZ /d Y /f 2>/dev/null
 "$WINE" reg add 'HKCU\Software\Wine\X11 Driver' /v Decorated /t REG_SZ /d N /f 2>/dev/null
 "$WINE" reg add 'HKCU\Software\Wine\DirectInput' /v MouseWarpOverride /t REG_SZ /d force /f 2>/dev/null
+"$WINE" reg add 'HKCU\Software\Wine\X11 Driver' /v InputStyle /t REG_SZ /d root /f 2>/dev/null
+
+# 한글 폰트 대체 (Noto CJK 심볼릭 링크)
+WINE_FONTS="$WINEPREFIX/drive_c/windows/Fonts"
+for f in NotoSansCJK-Regular.ttc NotoSansCJK-Bold.ttc NotoSerifCJK-Regular.ttc NotoSerifCJK-Bold.ttc; do
+  [ -f "/usr/share/fonts/opentype/noto/$f" ] && ln -sf "/usr/share/fonts/opentype/noto/$f" "$WINE_FONTS/$f"
+done
+
+# 한글 폰트 대체 레지스트리
+"$WINE" reg add 'HKCU\Software\Wine\Fonts\Replacements' /v Gulim /t REG_SZ /d 'Noto Sans CJK KR' /f 2>/dev/null
+"$WINE" reg add 'HKCU\Software\Wine\Fonts\Replacements' /v GulimChe /t REG_SZ /d 'Noto Sans CJK KR' /f 2>/dev/null
+"$WINE" reg add 'HKCU\Software\Wine\Fonts\Replacements' /v Batang /t REG_SZ /d 'Noto Serif CJK KR' /f 2>/dev/null
+"$WINE" reg add 'HKCU\Software\Wine\Fonts\Replacements' /v BatangChe /t REG_SZ /d 'Noto Serif CJK KR' /f 2>/dev/null
+"$WINE" reg add 'HKCU\Software\Wine\Fonts\Replacements' /v 'Malgun Gothic' /t REG_SZ /d 'Noto Sans CJK KR' /f 2>/dev/null
+"$WINE" reg add 'HKCU\Software\Wine\Fonts\Replacements' /v 'MS Gothic' /t REG_SZ /d 'Noto Sans CJK KR' /f 2>/dev/null
 echo "  완료"
 
 # 4. DXVK 설정 파일
@@ -103,7 +118,7 @@ fi
 cat > "$HOME/.local/share/applications/ngm-handler.desktop" << EOF
 [Desktop Entry]
 Name=Nexon Game Manager
-Exec=env WINEPREFIX=$WINEPREFIX WINEDEBUG=-all DISPLAY=:0 XMODIFIERS= GTK_IM_MODULE= QT_IM_MODULE= WINEFSYNC=1 WINEESYNC=1 STAGING_SHARED_MEMORY=1 DXVK_ASYNC=1 DXVK_CONFIG_FILE=$WINEPREFIX/drive_c/dxvk.conf mesa_glthread=true MESA_NO_ERROR=1 RADV_DEBUG=nozerovram AMD_VULKAN_ICD=RADV $WINE "$WINEPREFIX/drive_c/ProgramData/Nexon/NGM/NGM64.exe" "%u"
+Exec=env WINEPREFIX=$WINEPREFIX WINEDEBUG=-all DISPLAY=:0 XMODIFIERS=@im=ibus GTK_IM_MODULE=ibus QT_IM_MODULE=ibus WINEFSYNC=1 WINEESYNC=1 STAGING_SHARED_MEMORY=1 DXVK_ASYNC=1 DXVK_CONFIG_FILE=$WINEPREFIX/drive_c/dxvk.conf mesa_glthread=true MESA_NO_ERROR=1 RADV_DEBUG=nozerovram AMD_VULKAN_ICD=RADV $WINE "$WINEPREFIX/drive_c/ProgramData/Nexon/NGM/NGM64.exe" "%u"
 Type=Application
 MimeType=x-scheme-handler/ngm;
 NoDisplay=true

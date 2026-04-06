@@ -51,6 +51,7 @@ NEXON_ID="내_아이디" NEXON_PW="내_비밀번호" ./launch.sh
 - **Google Chrome** — CDP 자동화용
 - **Python 3** + `websockets` 모듈 (`pip install websockets`)
 - **winetricks** — DXVK 설치용 (`sudo apt install winetricks`)
+- **ibus-hangul** — 한글 입력용 (`sudo apt install ibus-hangul`)
 
 ## 구성 파일
 
@@ -75,13 +76,15 @@ launch.sh 실행
 
 ## 적용된 최적화
 
-### 키보드 입력 (리눅스에서 가장 흔한 문제)
+### 키보드 입력 + 한글 (리눅스에서 가장 흔한 문제)
 | 설정 | 효과 |
 |------|------|
-| `XMODIFIERS=''` | IBus/한글 입력기 충돌 방지 |
+| `XMODIFIERS=@im=ibus` | IBus 입력기 활성화 (한글 입력 지원) |
+| `InputStyle=root` | Wine X11 입력 스타일 변경 (IBus 호환성) |
 | `UseTakeFocus=N` | Alt-Tab 후 키보드 안 먹히는 문제 해결 |
 | `GrabFullscreen=Y` | 풀스크린에서 키보드/마우스 캡처 |
 | `MouseWarpOverride=force` | 마우스 커서 게임 창 내 고정 |
+| 한글 폰트 대체 | Noto CJK → 굴림/바탕/맑은고딕 매핑 |
 
 ### 그래픽 성능
 | 설정 | 효과 |

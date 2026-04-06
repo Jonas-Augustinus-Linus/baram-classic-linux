@@ -23,11 +23,11 @@ CDP_PORT=9222
 CHROME_PROFILE_DIR="${CHROME_PROFILE_DIR:-Profile 1}"
 
 # ==========================================
-# 키보드 입력 수정 (IBus 충돌 방지)
+# 키보드 입력 + 한글 입력 (IBus + InputStyle=root)
 # ==========================================
-export XMODIFIERS=''
-export GTK_IM_MODULE=''
-export QT_IM_MODULE=''
+export XMODIFIERS='@im=ibus'
+export GTK_IM_MODULE='ibus'
+export QT_IM_MODULE='ibus'
 
 # ==========================================
 # Wine 동기화
@@ -248,7 +248,7 @@ async def run():
             env = os.environ.copy()
             env.update({
                 "WINEPREFIX": WINEPREFIX, "WINEDEBUG": "-all",
-                "XMODIFIERS": "", "GTK_IM_MODULE": "", "QT_IM_MODULE": "",
+                "XMODIFIERS": "@im=ibus", "GTK_IM_MODULE": "ibus", "QT_IM_MODULE": "ibus",
                 "WINEFSYNC": "1", "WINEESYNC": "1", "STAGING_SHARED_MEMORY": "1",
                 "DXVK_ASYNC": "1", "DXVK_STATE_CACHE_PATH": WINEPREFIX,
                 "DXVK_CONFIG_FILE": f"{WINEPREFIX}/drive_c/dxvk.conf",
