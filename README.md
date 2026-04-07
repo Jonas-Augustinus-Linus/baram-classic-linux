@@ -12,7 +12,7 @@
 ## 주요 기능
 
 - **원클릭 실행** — `./launch.sh` 한 번으로 로그인부터 게임 실행까지 자동 처리
-- **키보드 입력 최적화** — IBus 충돌 방지, 포커스 문제 해결 등 리눅스 특유의 입력 문제 해결
+- **한글 입력** — fcitx5-hangul 기반 (GNOME의 IBus는 Wine XIM과 호환 불가 → fcitx5로 전환)
 - **성능 튜닝** — DXVK 비동기 컴파일, ntsync, GameMode 등 윈도우에 가까운 성능
 - **자동 로그인** — Chrome DevTools Protocol(CDP)을 활용한 넥슨 로그인 자동화
 - **ngm:// 프로토콜 핸들러** — 브라우저에서 "클라이언트 실행" 버튼 클릭 시 자동 연동
@@ -51,7 +51,7 @@ NEXON_ID="내_아이디" NEXON_PW="내_비밀번호" ./launch.sh
 - **Google Chrome** — CDP 자동화용
 - **Python 3** + `websockets` 모듈 (`pip install websockets`)
 - **winetricks** — DXVK 설치용 (`sudo apt install winetricks`)
-- **ibus-hangul** — 한글 입력용 (`sudo apt install ibus-hangul`)
+- **fcitx5-hangul** — 한글 입력용 (`sudo apt install fcitx5 fcitx5-hangul fcitx5-config-qt`)
 
 ## 구성 파일
 
@@ -79,8 +79,9 @@ launch.sh 실행
 ### 키보드 입력 + 한글 (리눅스에서 가장 흔한 문제)
 | 설정 | 효과 |
 |------|------|
-| `XMODIFIERS=@im=ibus` | IBus 입력기 활성화 (한글 입력 지원) |
-| `InputStyle=root` | Wine X11 입력 스타일 변경 (IBus 호환성) |
+| `XMODIFIERS=@im=fcitx` | fcitx5 입력기 활성화 (GNOME IBus는 Wine XIM 호환 불가) |
+| `InputStyle=root` | Wine X11 입력 스타일 변경 (fcitx5 호환성) |
+| `korean:ralt_hangul` | 오른쪽 Alt 키를 한/영 전환키로 매핑 |
 | `UseTakeFocus=N` | Alt-Tab 후 키보드 안 먹히는 문제 해결 |
 | `GrabFullscreen=Y` | 풀스크린에서 키보드/마우스 캡처 |
 | `MouseWarpOverride=force` | 마우스 커서 게임 창 내 고정 |

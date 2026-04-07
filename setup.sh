@@ -53,6 +53,57 @@ echo "[3/7] Wine 레지스트리 최적화..."
 "$WINE" reg add 'HKCU\Software\Wine\DirectInput' /v MouseWarpOverride /t REG_SZ /d force /f 2>/dev/null
 "$WINE" reg add 'HKCU\Software\Wine\X11 Driver' /v InputStyle /t REG_SZ /d root /f 2>/dev/null
 
+# 4-1. fcitx5-hangul 설치 (GNOME의 IBus는 Wine XIM과 호환 불가)
+echo "[3-1/7] fcitx5-hangul 설치..."
+if ! dpkg -l fcitx5-hangul 2>/dev/null | grep -q "^ii"; then
+  sudo apt install -y fcitx5 fcitx5-hangul fcitx5-config-qt 2>/dev/null
+fi
+
+# fcitx5 프로필 설정
+mkdir -p "$HOME/.config/fcitx5/conf"
+cat > "$HOME/.config/fcitx5/profile" << 'FCITXEOF'
+[Groups/0]
+Name=Default
+Default Layout=us
+DefaultIM=hangul
+
+[Groups/0/Items/0]
+Name=keyboard-us
+Layout=
+
+[Groups/0/Items/1]
+Name=hangul
+Layout=
+
+[GroupOrder]
+0=Default
+FCITXEOF
+
+cat > "$HOME/.config/fcitx5/config" << 'FCITXEOF'
+[Hotkey]
+EnumerateWithTriggerKeys=True
+EnumerateSkipFirst=False
+
+[Hotkey/TriggerKeys]
+0=Hangul
+1=Alt_R
+2=Super+space
+
+[Hotkey/EnumerateForwardKeys]
+0=Super+space
+
+[Hotkey/EnumerateBackwardKeys]
+0=Shift+Super+space
+
+[Behavior]
+DefaultPageSize=5
+ShareInputState=All
+FCITXEOF
+
+# 오른쪽 Alt를 한/영 키로 매핑
+gsettings set org.gnome.desktop.input-sources xkb-options "['korean:ralt_hangul', 'korean:rctrl_hanja']" 2>/dev/null
+echo "  fcitx5 설정 완료"
+
 # 한글 폰트 대체 (Noto CJK 심볼릭 링크)
 WINE_FONTS="$WINEPREFIX/drive_c/windows/Fonts"
 for f in NotoSansCJK-Regular.ttc NotoSansCJK-Bold.ttc NotoSerifCJK-Regular.ttc NotoSerifCJK-Bold.ttc; do
@@ -118,7 +169,7 @@ fi
 cat > "$HOME/.local/share/applications/ngm-handler.desktop" << EOF
 [Desktop Entry]
 Name=Nexon Game Manager
-Exec=env WINEPREFIX=$WINEPREFIX WINEDEBUG=-all DISPLAY=:0 XMODIFIERS=@im=ibus GTK_IM_MODULE=ibus QT_IM_MODULE=ibus WINEFSYNC=1 WINEESYNC=1 STAGING_SHARED_MEMORY=1 DXVK_ASYNC=1 DXVK_CONFIG_FILE=$WINEPREFIX/drive_c/dxvk.conf mesa_glthread=true MESA_NO_ERROR=1 RADV_DEBUG=nozerovram AMD_VULKAN_ICD=RADV $WINE "$WINEPREFIX/drive_c/ProgramData/Nexon/NGM/NGM64.exe" "%u"
+Exec=env WINEPREFIX=$WINEPREFIX WINEDEBUG=-all DISPLAY=:0 XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx SDL_IM_MODULE=fcitx INPUT_METHOD=fcitx WINEFSYNC=1 WINEESYNC=1 STAGING_SHARED_MEMORY=1 DXVK_ASYNC=1 DXVK_CONFIG_FILE=$WINEPREFIX/drive_c/dxvk.conf mesa_glthread=true MESA_NO_ERROR=1 RADV_DEBUG=nozerovram AMD_VULKAN_ICD=RADV $WINE "$WINEPREFIX/drive_c/ProgramData/Nexon/NGM/NGM64.exe" "%u"
 Type=Application
 MimeType=x-scheme-handler/ngm;
 NoDisplay=true

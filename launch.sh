@@ -26,11 +26,14 @@ CDP_PORT=9222
 CHROME_PROFILE_DIR="${CHROME_PROFILE_DIR:-Profile 1}"
 
 # ==========================================
-# 키보드 입력 + 한글 입력 (IBus + InputStyle=root)
+# 키보드 입력 + 한글 입력 (fcitx5 + InputStyle=root)
+# GNOME은 IBus를 강제 실행하여 Wine XIM과 충돌하므로 fcitx5 사용
 # ==========================================
-export XMODIFIERS='@im=ibus'
-export GTK_IM_MODULE='ibus'
-export QT_IM_MODULE='ibus'
+export XMODIFIERS='@im=fcitx'
+export GTK_IM_MODULE='fcitx'
+export QT_IM_MODULE='fcitx'
+export SDL_IM_MODULE='fcitx'
+export INPUT_METHOD='fcitx'
 
 # ==========================================
 # Wine 동기화
