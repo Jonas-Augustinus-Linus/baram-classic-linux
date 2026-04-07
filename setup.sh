@@ -165,11 +165,19 @@ if [ ! -f "$WINEPREFIX/drive_c/ProgramData/Nexon/NGM/NGM64.exe" ]; then
   echo "  NGM 설치 완료"
 fi
 
+# ngm-launch.sh 설치
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+NGM_LAUNCH="$HOME/.local/bin/ngm-launch.sh"
+mkdir -p "$HOME/.local/bin"
+cp "$SCRIPT_DIR/ngm-launch.sh" "$NGM_LAUNCH"
+chmod +x "$NGM_LAUNCH"
+echo "  ngm-launch.sh → $NGM_LAUNCH"
+
 # ngm:// 프로토콜 핸들러 등록
 cat > "$HOME/.local/share/applications/ngm-handler.desktop" << EOF
 [Desktop Entry]
 Name=Nexon Game Manager
-Exec=env WINEPREFIX=$WINEPREFIX WINEDEBUG=-all DISPLAY=:0 XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx SDL_IM_MODULE=fcitx INPUT_METHOD=fcitx WINEFSYNC=1 WINEESYNC=1 STAGING_SHARED_MEMORY=1 DXVK_ASYNC=1 DXVK_CONFIG_FILE=$WINEPREFIX/drive_c/dxvk.conf mesa_glthread=true MESA_NO_ERROR=1 RADV_DEBUG=nozerovram AMD_VULKAN_ICD=RADV $WINE "$WINEPREFIX/drive_c/ProgramData/Nexon/NGM/NGM64.exe" "%u"
+Exec=$NGM_LAUNCH %u
 Type=Application
 MimeType=x-scheme-handler/ngm;
 NoDisplay=true

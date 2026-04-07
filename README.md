@@ -11,10 +11,10 @@
 
 ## 주요 기능
 
-- **원클릭 실행** — `./launch.sh` 한 번으로 로그인부터 게임 실행까지 자동 처리
+- **브라우저 로그인 → 원클릭 실행** — 로그인 후 "클라이언트 실행" 클릭하면 ngm:// 핸들러가 자동으로 게임 실행
 - **한글 입력** — fcitx5-hangul 기반 (GNOME의 IBus는 Wine XIM과 호환 불가 → fcitx5로 전환)
 - **성능 튜닝** — DXVK 비동기 컴파일, ntsync, GameMode 등 윈도우에 가까운 성능
-- **자동 로그인** — Chrome DevTools Protocol(CDP)을 활용한 넥슨 로그인 자동화
+- **CDP 자동 로그인** — Chrome DevTools Protocol으로 자동 로그인도 가능 (선택)
 - **ngm:// 프로토콜 핸들러** — 브라우저에서 "클라이언트 실행" 버튼 클릭 시 자동 연동
 
 ## 테스트 환경
@@ -35,21 +35,42 @@
 git clone https://github.com/Jonas-Augustinus-Linus/baram-classic-linux.git
 cd baram-classic-linux
 
-# 2. 초기 설정 (Wine prefix, DXVK, 레지스트리, 커널 최적화)
-chmod +x setup.sh launch.sh
+# 2. 초기 설정 (Wine prefix, DXVK, 레지스트리, 커널 최적화, 프로토콜 핸들러)
+chmod +x setup.sh launch.sh ngm-launch.sh
 ./setup.sh
 
-# 3. 넥슨 계정 설정 후 실행
-NEXON_ID="내_아이디" NEXON_PW="내_비밀번호" ./launch.sh
+# 3. 게임 실행
+./launch.sh
 ```
+
+## 실행 방법
+
+### 방법 1: 브라우저 직접 로그인 (기본, 권장)
+
+```bash
+./launch.sh
+```
+
+1. 브라우저에서 메이플스토리 월드 페이지가 열립니다
+2. 넥슨 계정으로 로그인합니다
+3. "클라이언트 실행" 버튼을 클릭합니다
+4. ngm:// 프로토콜 핸들러가 자동으로 게임을 실행합니다
+
+### 방법 2: Chrome CDP 자동 로그인 (선택)
+
+```bash
+NEXON_ID="내_아이디" NEXON_PW="내_비밀번호" ./launch.sh --cdp
+```
+
+Chrome DevTools Protocol을 사용하여 로그인을 자동화합니다. CDP 세션에서 넥슨 로그인 쿠키가 만료된 경우 실패할 수 있으므로, 그때는 방법 1을 사용하세요.
 
 ## 요구사항
 
 - **Ubuntu 24.04+** (또는 동등한 리눅스 배포판)
 - **Wine 10.6+ Staging** — [Wine TkG](https://github.com/Frogging-Family/wine-tkg-git) 또는 Lutris/Bottles에서 설치
 - **Vulkan 지원 GPU** — AMD (RADV) 또는 NVIDIA
-- **Google Chrome** — CDP 자동화용
-- **Python 3** + `websockets` 모듈 (`pip install websockets`)
+- **Google Chrome** — 게임 실행 URL 전달용
+- **Python 3** + `websockets` 모듈 — CDP 모드 사용 시 (`pip install websockets`)
 - **winetricks** — DXVK 설치용 (`sudo apt install winetricks`)
 - **fcitx5-hangul** — 한글 입력용 (`sudo apt install fcitx5 fcitx5-hangul fcitx5-config-qt`)
 
@@ -57,20 +78,35 @@ NEXON_ID="내_아이디" NEXON_PW="내_비밀번호" ./launch.sh
 
 | 파일 | 설명 |
 |------|------|
-| `launch.sh` | 원클릭 게임 런처 (Chrome CDP 자동 로그인 + NGM URL 캡처) |
-| `setup.sh` | 초기 환경 설정 (Wine prefix, DXVK, 레지스트리, ntsync, NGM) |
+| `launch.sh` | 게임 런처 (기본: 브라우저 로그인, `--cdp`: 자동 로그인) |
+| `ngm-launch.sh` | ngm:// 프로토콜 핸들러 래퍼 (Wine 환경변수 + 최적화 적용) |
+| `setup.sh` | 초기 환경 설정 (Wine prefix, DXVK, 레지스트리, ntsync, NGM, 프로토콜 핸들러) |
 | `dxvk.conf` | DXVK 성능 최적화 (`maxFrameLatency=1` 등) |
 | `gamemode.ini` | Feral GameMode 설정 (`~/.config/gamemode.ini`에 복사) |
-| `ngm-handler.desktop` | ngm:// 프로토콜 핸들러 (setup.sh가 자동 등록) |
+| `ngm-handler.desktop` | ngm:// 프로토콜 핸들러 (setup.sh가 경로 치환 후 자동 등록) |
 
 ## 작동 원리
 
+### 브라우저 방식 (기본)
+
 ```
 launch.sh 실행
+  └─ 브라우저에서 MSW 페이지 열기
+       └─ 사용자가 로그인 + "클라이언트 실행" 클릭
+            └─ 브라우저가 ngm:// URL 생성
+                 └─ ngm-handler.desktop → ngm-launch.sh
+                      └─ Wine 환경 세팅 + GameMode 활성화
+                           └─ NGM64.exe 실행 → msw.exe (게임 본체) 시작
+```
+
+### CDP 방식 (--cdp)
+
+```
+launch.sh --cdp 실행
   ├─ Chrome을 CDP(DevTools Protocol) 모드로 시작
   ├─ 넥슨 로그인 자동 처리
   ├─ "클라이언트 실행" 버튼 클릭
-  ├─ NGM.GenerateURI()로 ngm:// URL 생성
+  ├─ NGM.GenerateURI()로 ngm:// URL 캡처
   └─ Wine으로 NGM64.exe 실행 → msw.exe (게임 본체) 시작
 ```
 
@@ -113,10 +149,12 @@ launch.sh 실행
 
 | 증상 | 원인 | 해결 |
 |------|------|------|
-| Vuplex WebView 크래시 | `OpenSharedResource` 미지원 | DXVK 설치로 해결. 게임 플레이에 영향 없음 |
+| 게임 내 로그인 화면에서 로그인 불가 | Vuplex WebView(내장 CEF 브라우저)가 Wine에서 정상 작동하지 않음 | msw.exe 직접 실행 대신 반드시 브라우저에서 ngm:// URL을 통해 실행 |
+| NexonLauncher64.exe 크래시 | Wine 호환성 부족 | 넥슨 런처 대신 브라우저 방식 사용 |
+| CDP 모드에서 NGM URL 캡처 실패 | Chrome 프로파일 복사 시 넥슨 로그인 세션 미보존 | `--cdp` 대신 기본 브라우저 로그인 방식 사용 |
+| Vuplex WebView 크래시 로그 | `OpenSharedResource` 미지원 | DXVK 설치로 완화. 게임 플레이에 영향 없음 |
 | 첫 실행 시 끊김 | 셰이더 컴파일 | DXVK 캐시 축적 후 해소 |
 | 보안 모듈 변경 에러 | 게임 파일 무결성 검사 | 재실행하면 해결 |
-| Chrome CDP 연결 실패 | 기존 Chrome 실행 중 | launch.sh가 자동으로 Chrome 재시작 |
 
 ## 기여
 
