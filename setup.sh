@@ -139,6 +139,14 @@ dxvk.maxFrameLatency = 1
 dxvk.numCompilerThreads = 0
 dxvk.enableGraphicsPipelineLibrary = True
 dxvk.enableMemoryDefrag = True
+dxvk.enableStateCache = True
+
+d3d11.cachedDynamicResources = "a"
+
+# iGPU에서 DXVK가 1024MB 가짜 VRAM을 보고해 Unity의 RenderTexture 거대 할당이
+# 막혀 비정상 종료되는 사례가 있었음. 시스템 RAM 8GB+ 기준으로 한도 상향.
+dxgi.maxDeviceMemory = 4096
+dxgi.maxSharedMemory = 8192
 EOF
 echo "  완료"
 

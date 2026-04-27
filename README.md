@@ -156,6 +156,7 @@ launch.sh --cdp 실행
 | 게임 내 로그인 화면에서 로그인 불가 | Vuplex WebView(내장 CEF 브라우저)가 Wine에서 정상 작동하지 않음 | msw.exe 직접 실행 대신 반드시 브라우저에서 ngm:// URL을 통해 실행 |
 | **NexonLauncher64.exe가 약 10초 만에 조용히 종료** | Microsoft Edge WebView2 런타임 누락. NexonLauncher UI가 WebView2에 의존하는데 Wine 프리픽스에 기본적으로 없음. 크래시 로그 대신 `warn:seh:dispatch_exception "WebView2: Failed to find an installed WebView2 runtime"`만 Wine 로그에 남김 | setup.sh가 자동 설치. 수동: `wget "https://go.microsoft.com/fwlink/?linkid=2099617" -O /tmp/wv.exe && wine /tmp/wv.exe /silent /install` |
 | **msw.exe가 약 45초 만에 조용히 종료 (Unity `Player.log` 끝에 `ShutdownInProgress`만 기록)** | `grap-core64.aes` 안티치트가 일반 `wine-stable`을 감지해 `Application.Quit()` 호출. Staging의 esync/fsync 시그니처가 없으면 바로 차단당함 | **Wine TkG Staging(Esync/Fsync) 필수.** setup.sh가 Kron4ek 10.6 빌드를 자동 다운로드. `winehq-stable` 11.0 단독으로는 우회 불가 |
+| **플레이 도중 msw.exe가 비정상 종료 (`Player.log`에 `RenderTexture.Create failed: requested size is too large` 반복)** | DXVK가 AMD iGPU의 VRAM을 1024MB 가짜값으로 보고해 Unity가 큰 RenderTexture 할당에 실패. SEH 핸들러가 nested exception을 연쇄 호출하다 스택을 폭주시키며 종료. 듀얼 모니터로 가상 화면이 비표준 크기(예: 1920×2280)일 때 더 잘 재현됨 | `dxvk.conf`에 `dxgi.maxDeviceMemory = 4096`, `dxgi.maxSharedMemory = 8192` 추가(setup.sh가 자동 적용). 재현 시 단일 모니터/윈도우드 모드로 분리 검증 |
 | CDP 모드에서 NGM URL 캡처 실패 | Chrome 프로파일 복사 시 넥슨 로그인 세션 미보존 | `--cdp` 대신 기본 브라우저 로그인 방식 사용 |
 | Vuplex WebView 크래시 로그 | `OpenSharedResource` 미지원 | DXVK 설치로 완화. 게임 플레이에 영향 없음 |
 | 첫 실행 시 끊김 | 셰이더 컴파일 | DXVK 캐시 축적 후 해소 |
@@ -194,6 +195,37 @@ launch.sh --cdp 실행
 - **단계 0 추가**: `$WINE` 바이너리가 없으면 Kron4ek Wine TkG 10.6 Staging 자동 다운로드 → `~/.local/share/wine-runners/`에 압축해제
 - **단계 8 추가**: WebView2 Evergreen Runtime을 Wine 프리픽스에 silent install (이미 설치돼 있으면 스킵)
 - 기존 1–7 단계 번호를 `/7` → `/8`로 갱신
+
+### 3. 플레이 중 RenderTexture 할당 실패로 비정상 종료
+
+**증상**: 게임이 정상적으로 로그인까지 진행되고 캐릭터 화면까지 뜨지만, 플레이 중 어느 시점에 창이 사라짐. `Player-prev.log`(이전 세션) 끝부분에 다음이 반복됨:
+
+```
+RenderTexture.Create failed: requested size is too large.
+[ line 1031736]
+RenderTexture.Create failed: requested size is too large.
+[ line 892408]
+...
+Input System module state changed to: ShutdownInProgress.
+```
+
+같은 시각 Wine 로그(`journalctl --user`)에는 `seh:call_seh_handlers nested exception`이 수천 줄 연속 호출되며 스택 프레임 주소가 1KB씩 단조 증가 — 예외 처리 중 다시 예외가 터지는 nested exception 폭주로 인한 스택 오버플로우.
+
+**실제 원인**: DXVK는 AMD iGPU의 VRAM을 임의로 1024MB로 보고합니다(실제로는 시스템 RAM 공유). Unity가 화면 해상도에 비례한 RenderTexture를 만들려다 이 1GB 한도에 막혀 실패하면 SEH 캐스케이드를 거쳐 종료됩니다. 다음 조건이 겹치면 더 잘 발생:
+
+- 듀얼 모니터(예: 노트북 LCD 1920×1200 + 외부 1920×1080) → 가상 캔버스가 1920×2280 같은 비표준 크기
+- iGPU에서 RAM 일부만 GPU에 보이도록 BIOS 설정 (UMA Frame buffer)
+
+**해결**: dxvk.conf에 다음을 추가하여 DXVK가 보고하는 메모리 한도를 상향:
+
+```ini
+dxgi.maxDeviceMemory = 4096
+dxgi.maxSharedMemory = 8192
+```
+
+setup.sh의 단계 4에서 자동 적용됩니다. 그래도 재현되면 단일 모니터 또는 윈도우드 모드로 가상 캔버스 크기 영향을 분리 검증해보세요(`xrandr --output HDMI-1 --off` 등).
+
+**부수 발견**: 디버깅 과정에서 `~/.local/bin/ngm-launch.sh`가 레포 버전과 달리 `WINEDEBUG=+err,+seh,+crash,+module,fixme-all`로 오버라이드된 디버그 사본이 깔려 있는 경우가 발견됨. 이 상태에선 trace 로그가 초당 수십 줄씩 journal에 기록되어 SEH 캐스케이드를 더 가속함. setup.sh를 다시 실행하면 레포의 `WINEDEBUG=-all` 버전으로 복구됩니다.
 
 ## 기여
 
