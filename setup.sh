@@ -45,16 +45,36 @@ else
 fi
 
 # 2. DXVK 설치
+# Wine builtin d3d11.dll도 PE32+이므로 file로는 구별 불가.
+# DXVK 마커("dxvk-2.")로 판별하고, 누락 시 GitHub 릴리즈에서 직접 받아 설치.
 echo "[2/8] DXVK 설치..."
-if file "$WINEPREFIX/drive_c/windows/system32/d3d11.dll" 2>/dev/null | grep -q "PE32+"; then
+DXVK_VER="2.7.1"
+if strings "$WINEPREFIX/drive_c/windows/system32/d3d11.dll" 2>/dev/null | grep -q "DXVK_CONFIG_FILE"; then
   echo "  DXVK 이미 설치됨"
 else
-  if command -v winetricks &>/dev/null; then
-    WINEPREFIX="$WINEPREFIX" winetricks -q dxvk
-  else
-    echo "  [!] winetricks가 필요합니다: sudo apt install winetricks"
-    exit 1
+  TARBALL="/tmp/dxvk-${DXVK_VER}.tar.gz"
+  DXVK_URL="https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VER}/dxvk-${DXVK_VER}.tar.gz"
+  if [ ! -s "$TARBALL" ]; then
+    echo "  DXVK ${DXVK_VER} 다운로드..."
+    wget -q --show-progress "$DXVK_URL" -O "$TARBALL" || curl -fsSL "$DXVK_URL" -o "$TARBALL" || {
+      echo "  [!] DXVK 다운로드 실패"; exit 1
+    }
   fi
+  tar -xzf "$TARBALL" -C /tmp
+  # builtin DLL 백업 (.wine-orig)
+  for d in system32 syswow64; do
+    for f in d3d11.dll d3d10core.dll d3d10.dll d3d9.dll d3d8.dll dxgi.dll; do
+      [ -f "$WINEPREFIX/drive_c/windows/$d/$f" ] && \
+        cp -n "$WINEPREFIX/drive_c/windows/$d/$f" "$WINEPREFIX/drive_c/windows/$d/$f.wine-orig" 2>/dev/null
+    done
+  done
+  cp /tmp/dxvk-${DXVK_VER}/x64/{d3d11,d3d10core,d3d9,dxgi}.dll "$WINEPREFIX/drive_c/windows/system32/"
+  cp /tmp/dxvk-${DXVK_VER}/x32/{d3d11,d3d10core,d3d9,dxgi}.dll "$WINEPREFIX/drive_c/windows/syswow64/"
+  # DLL override: native(=DXVK) 우선, 실패 시 builtin(Wine) fallback
+  for dll in d3d11 d3d10core d3d10 d3d9 dxgi; do
+    "$WINE" reg add 'HKCU\Software\Wine\DllOverrides' /v "$dll" /t REG_SZ /d 'native,builtin' /f 2>/dev/null
+  done
+  echo "  DXVK ${DXVK_VER} 설치 완료"
 fi
 
 # 3. Wine 레지스트리 최적화
