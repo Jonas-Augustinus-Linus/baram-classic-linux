@@ -19,17 +19,19 @@
 
 ## 테스트 환경
 
-두 가지 AMD iGPU 환경에서 동작을 확인했습니다.
+세 가지 AMD iGPU 환경에서 동작을 확인했습니다.
 
-| 항목 | 구성 A (최초 개발) | 구성 B (추가 검증, 2026-04) |
-|------|-------------------|----------------------------|
-| 기기 | 데스크탑 | ThinkPad E16 Gen 1 |
-| OS | Ubuntu 24.04 LTS (Wayland) | Ubuntu 24.04 LTS |
-| CPU | AMD Ryzen 7 7840U | AMD Ryzen 3 7330U |
-| GPU | AMD Radeon 780M (RDNA3 iGPU) | AMD Radeon Vega (Barcelo iGPU) |
-| Kernel | 6.17+ | 6.17+ |
-| Wine | 10.6 Staging TkG (Esync/Fsync) | 10.6 Staging TkG (Esync/Fsync) |
-| DXVK | 2.7.1 | 2.7.1 (winetricks 자동 설치) |
+| 항목 | 구성 A (최초 개발) | 구성 B (추가 검증, 2026-04) | 구성 C (추가 검증, 2026-05) |
+|------|-------------------|----------------------------|------------------------------|
+| 기기 | 데스크탑 | ThinkPad E16 Gen 1 | ThinkPad T16 Gen 2 |
+| OS | Ubuntu 24.04 LTS (Wayland) | Ubuntu 24.04 LTS | Ubuntu 26.04 LTS (Wayland) |
+| CPU | AMD Ryzen 7 7840U | AMD Ryzen 3 7330U | AMD Ryzen 7 7840U |
+| GPU | AMD Radeon 780M (RDNA3 iGPU) | AMD Radeon Vega (Barcelo iGPU) | AMD Radeon 780M (RDNA3 iGPU) |
+| Kernel | 6.17+ | 6.17+ | 7.0 |
+| Wine | 10.6 Staging TkG (Esync/Fsync) | 10.6 Staging TkG (Esync/Fsync) | 10.6 Staging TkG (Esync/Fsync) |
+| DXVK | 2.7.1 | 2.7.1 (winetricks 자동 설치) | 2.7.1 |
+
+> Ubuntu 26.04 LTS / 커널 7.0 환경에서도 추가 수정 없이 동작합니다. 커널 6.14+는 ntsync를 기본 제공하므로 `setup.sh`의 ntsync 단계는 자동으로 스킵됩니다.
 
 ## 빠른 시작
 
@@ -162,6 +164,7 @@ launch.sh --cdp 실행
 | 첫 실행 시 끊김 | 셰이더 컴파일 | DXVK 캐시 축적 후 해소 |
 | 보안 모듈 변경 에러 | 게임 파일 무결성 검사 | 재실행하면 해결 |
 | `libgamemodeauto.so.0 (i386)` LD_PRELOAD 경고 | i386 gamemode 라이브러리 부재 | 경고만 출력되고 게임은 정상. `sudo apt install libgamemode0:i386`로 제거 가능 |
+| GameMode가 CPU 우선순위를 못 올림 (저널에 `Failed to renice ... Permission denied`) | 사용자가 `gamemode` 그룹에 없어 `/etc/security/limits.d`의 `@gamemode` nice 한도가 적용 안 됨 | `sudo usermod -aG gamemode $USER` 후 재로그인. `setup.sh` 단계 6-1이 자동 처리 |
 
 ### 진단 팁 — 조용한 크래시를 추적할 때
 

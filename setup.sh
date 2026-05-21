@@ -196,6 +196,23 @@ else
   echo "  이미 설정됨"
 fi
 
+# 6-1. GameMode 설정 (CPU/GPU 성능 모드 + 게임 프로세스 우선순위)
+echo "[6-1/8] GameMode 설정..."
+if ! command -v gamemoderun &>/dev/null; then
+  sudo apt install -y gamemode 2>/dev/null || echo "  [!] gamemode 설치 실패 — 수동: sudo apt install gamemode"
+fi
+GM_SRC="$(cd "$(dirname "$0")" && pwd)/gamemode.ini"
+[ -f "$GM_SRC" ] && cp "$GM_SRC" "$HOME/.config/gamemode.ini" && echo "  gamemode.ini → ~/.config/"
+# gamemode 그룹 미가입 시 gamemoded가 게임 우선순위(renice)를 못 올리고
+# 'Failed to renice ... Permission denied'만 남긴다 (limits.d의 @gamemode nice 규칙 미적용)
+if getent group gamemode >/dev/null 2>&1; then
+  if id -nG "$USER" | grep -qw gamemode; then
+    echo "  gamemode 그룹 OK"
+  else
+    sudo usermod -aG gamemode "$USER" && echo "  $USER → gamemode 그룹 추가 (재로그인 후 적용)"
+  fi
+fi
+
 # 7. NGM 설치 및 프로토콜 핸들러
 echo "[7/8] NGM 설치 및 프로토콜 핸들러..."
 if [ ! -f "$WINEPREFIX/drive_c/ProgramData/Nexon/NGM/NGM64.exe" ]; then

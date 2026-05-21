@@ -57,5 +57,16 @@ else
     "$WINE" "$NGM_EXE" "$NGM_URL"
 fi
 
+# NGM64.exe는 게임 본체(msw.exe)를 띄운 뒤 곧바로 종료되므로 위 wine 호출은
+# 금방 반환된다. msw.exe가 실제로 끝날 때까지 기다려야 Tracker 복구 타이밍이
+# 맞다 — 곧장 복구하면 플레이 내내 인덱서가 다시 돌아 I/O 경쟁이 생긴다.
+for _ in $(seq 1 90); do
+    pgrep -x msw.exe >/dev/null 2>&1 && break
+    sleep 1
+done
+while pgrep -x msw.exe >/dev/null 2>&1; do
+    sleep 5
+done
+
 # 게임 종료 후 Tracker 복구
 systemctl --user start tracker-miner-fs-3.service 2>/dev/null
