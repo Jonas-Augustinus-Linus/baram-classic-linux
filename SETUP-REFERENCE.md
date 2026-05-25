@@ -438,6 +438,15 @@ end=notify-send "GameMode 비활성화" "일반 모드로 복귀" -i application
 > `inhibit_screensaver=1`만으로는 sleep 차단을 보장하지 못합니다 → §6의 `systemd-inhibit`과 병행해야 안전.
 > 32비트 경고(`libgamemodeauto.so.0 (i386)`)가 거슬리면 `sudo apt install libgamemode0:i386`.
 
+**`gamemode` 그룹 가입 — 필수**: `gamemoded`가 게임 프로세스 우선순위(`renice`)를 올리려면 사용자가 `gamemode` 그룹 멤버여야 합니다. 미가입 시 `gamemoded`는 `Failed to renice ... Permission denied`만 남기고 우선순위 부스트가 통째로 빠집니다 (`limits.d`의 `@gamemode - nice -10` 규칙 미적용).
+
+```bash
+sudo usermod -aG gamemode "$USER"   # 재로그인 후 적용
+id -nG | grep -qw gamemode && echo OK
+```
+
+`setup.sh`의 [6-1/8] 단계가 자동으로 그룹 가입을 시도합니다 (이미 멤버면 skip).
+
 ---
 
 ## 8. 새 머신 검증 체크리스트
@@ -466,11 +475,14 @@ ls -d ~/.wine-msworlds/drive_c/Program\ Files\ \(x86\)/Microsoft/EdgeWebView/App
 # 7) ngm-launch.sh — 아래 두 줄 모두 grep 되어야 함 (§6 반영 확인)
 grep -c 'systemd-inhibit\|wineserver --wait' ~/.local/bin/ngm-launch.sh   # → 2 이상
 
-# 8) [게임 1회 실행 후] DXVK 작동 — Renderer가 실제 GPU여야 함
+# 8) gamemode 그룹 — 출력에 gamemode 가 보여야 함 (없으면 §7 그룹 가입 후 재로그인)
+id -nG | tr ' ' '\n' | grep -w gamemode || echo "(gamemode 그룹 아님 — renice Permission denied 발생)"
+
+# 9) [게임 1회 실행 후] DXVK 작동 — Renderer가 실제 GPU여야 함
 grep -A4 'Direct3D:' "~/.wine-msworlds/drive_c/users/$USER/AppData/LocalLow/nexon/MapleStory Worlds/Player.log"
 ```
 
-**8번 정상 출력 예시 (이 머신)**:
+**9번 정상 출력 예시 (이 머신)**:
 ```
 Direct3D:
     Version:  Direct3D 11.0 [level 11.1]
@@ -492,6 +504,7 @@ Direct3D:
 | 플레이 중 종료, DXVK는 정상인데 `RenderTexture.Create failed` | `dxgi.maxDeviceMemory` 미설정 | §4-4 — dxvk.conf 두 곳에 배치 |
 | `Player.log`가 0바이트 + 직후 `[*] cleanup 시작` 로그 | 구버전 `ngm-launch.sh` (NGM64를 본체로 오인) | §6 — `wineserver --wait` 포함 버전으로 교체 |
 | 게임 중 시스템이 절전 진입 | 구버전 `ngm-launch.sh` (`systemd-inhibit` 없음) | §6 — 전문으로 교체 |
+| GameMode 알림은 뜨는데 CPU 우선순위 부스트 누락 / journal에 `Failed to renice ... Permission denied` | `gamemode` 그룹 미가입 — `gamemoded`가 renice 권한 없음 | §7 — `sudo usermod -aG gamemode $USER` 후 재로그인 (§8-8 검증) |
 | 한글 입력이 전혀 안 됨 | IBus 사용 중 / fcitx5 미구성 | §4-3-1 — fcitx5로 전환, `XMODIFIERS` 확인 |
 
 **조용한 크래시 디버깅**: `ngm-launch.sh`의 `WINEDEBUG=-all`을 일시적으로 `WINEDEBUG=+err,+seh,+module,fixme-all`로 바꾸고 출력을 파일로 리다이렉트하면 원인이 드러납니다. 디버깅이 끝나면 **반드시 `-all`로 되돌릴 것** — trace 로그가 초당 수십 줄 쌓이면 SEH 캐스케이드를 가속합니다.
