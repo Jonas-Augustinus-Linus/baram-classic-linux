@@ -47,26 +47,37 @@ export RADV_PERFTEST=gpl
 export __GL_SHADER_DISK_CACHE=1
 export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
 
+# 게임 종료 후 정리 (정상/비정상 종료 모두 처리)
+cleanup() {
+    echo ""
+    echo "[*] cleanup 시작..."
+    if [ -x "$WINE_DIR/bin/wineserver" ]; then
+        WINEPREFIX="$WINEPREFIX" "$WINE_DIR/bin/wineserver" -k 2>/dev/null || true
+        WINEPREFIX="$WINEPREFIX" timeout 5 "$WINE_DIR/bin/wineserver" -w 2>/dev/null || true
+    fi
+    pkill -KILL -f "${WINEPREFIX}/" 2>/dev/null || true
+    systemctl --user start tracker-miner-fs-3.service 2>/dev/null || true
+    echo "[*] cleanup 완료"
+}
+trap cleanup EXIT INT TERM HUP
+
 # Tracker 인덱서 중지 (I/O 경쟁 방지)
 systemctl --user stop tracker-miner-fs-3.service 2>/dev/null
 
-# 게임 실행
+# 게임 실행 (systemd-inhibit으로 게임 중 자동 절전/idle 차단)
+# NGM64.exe는 실제 게임(msw.exe)을 스폰하고 즉시 종료하므로, wineserver --wait으로
+# 본체 종료까지 대기해야 cleanup 트랩이 게임을 죽이지 않는다.
+GAME_CMD=("$WINE" "$NGM_EXE" "$NGM_URL")
 if command -v gamemoderun &>/dev/null; then
-    gamemoderun "$WINE" "$NGM_EXE" "$NGM_URL"
-else
-    "$WINE" "$NGM_EXE" "$NGM_URL"
+    GAME_CMD=(gamemoderun "${GAME_CMD[@]}")
 fi
 
-# NGM64.exe는 게임 본체(msw.exe)를 띄운 뒤 곧바로 종료되므로 위 wine 호출은
-# 금방 반환된다. msw.exe가 실제로 끝날 때까지 기다려야 Tracker 복구 타이밍이
-# 맞다 — 곧장 복구하면 플레이 내내 인덱서가 다시 돌아 I/O 경쟁이 생긴다.
-for _ in $(seq 1 90); do
-    pgrep -x msw.exe >/dev/null 2>&1 && break
-    sleep 1
-done
-while pgrep -x msw.exe >/dev/null 2>&1; do
-    sleep 5
-done
+WINESERVER="$WINE_DIR/bin/wineserver"
+export WINESERVER WINEPREFIX
 
-# 게임 종료 후 Tracker 복구
-systemctl --user start tracker-miner-fs-3.service 2>/dev/null
+systemd-inhibit \
+    --what=idle:sleep \
+    --who="Baram Classic" \
+    --why="게임 실행 중" \
+    bash -c '"$@"; echo "[*] NGM 런처 종료, 게임 본체 종료 대기..."; "$WINESERVER" --wait; echo "[*] 게임 본체 종료"' \
+    _ "${GAME_CMD[@]}"
