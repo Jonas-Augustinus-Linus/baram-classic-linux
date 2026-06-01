@@ -23,12 +23,28 @@ WINEPREFIX="${WINEPREFIX:-$HOME/.wine-msworlds}"
 NGM_EXE="$WINEPREFIX/drive_c/ProgramData/Nexon/NGM/NGM64.exe"
 WINESERVER="$WINE_DIR/bin/wineserver"
 
-# 한글 입력 (fcitx5)
-export XMODIFIERS='@im=fcitx'
-export GTK_IM_MODULE='fcitx'
-export QT_IM_MODULE='fcitx'
-export SDL_IM_MODULE='fcitx'
-export INPUT_METHOD='fcitx'
+# === 입력기(IM) — 기본 OFF (순정 직접 입력) ===
+# fcitx XIM을 게임에 물리면 Wine에 입력 폴링/이벤트 오버헤드가 얹혀 입력렉/스터터가
+# 생긴다. 게임 내 한글 입력은 거의 불필요하므로 기본은 IM 없이(순정 입력) 실행한다.
+# 게임 중 한글 채팅이 필요하면 IM=1 로 실행:  IM=1 ~/ngm-launch.sh "ngm://..."
+if [ "${IM:-0}" = "1" ]; then
+    export XMODIFIERS='@im=fcitx'
+    export GTK_IM_MODULE='fcitx'
+    export QT_IM_MODULE='fcitx'
+    export SDL_IM_MODULE='fcitx'
+    export INPUT_METHOD='fcitx'
+    # Wine 시작 전 fcitx5 데몬/XIM 소켓 보장
+    if ! pgrep -x fcitx5 >/dev/null 2>&1; then
+        nohup fcitx5 -d -r >/tmp/fcitx5-ngm.log 2>&1 &
+        sleep 2
+    fi
+else
+    # 기본: 시스템 전역 fcitx 환경변수를 이 게임 세션에서만 무력화
+    unset XMODIFIERS GTK_IM_MODULE QT_IM_MODULE SDL_IM_MODULE GLFW_IM_MODULE INPUT_METHOD
+    export XMODIFIERS='@im=none'
+    export GTK_IM_MODULE='xim'
+    export QT_IM_MODULE='xim'
+fi
 
 # Wine
 export WINEPREFIX
